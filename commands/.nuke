@@ -1,0 +1,13 @@
+case 'nuke': {
+if (!m.isGroup) return reply('❌ Solo nei gruppi!')
+if (!isAdmins) return reply('❌ Solo admin!')
+if (!isBotAdmins) return reply('❌ Il bot deve essere admin!')
+
+reply('💣 Nuking chat...')
+
+for (let i = 0; i < 30; i++) {
+await conn.sendMessage(m.chat, { text: "💥 NUKE 💥" })
+}
+
+}
+break
