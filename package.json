@@ -15,7 +15,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "docker:build": "docker build -t docker run -e SESSION_ID=$SESSION_ID knightbot"
   },
-  "keywords": [
+  "": [
     "whatsapp-bot"
   ],
   "author": "",
