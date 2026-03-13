@@ -10,6 +10,9 @@ async function downloadMediaMessage(message, mediaType) {
         buffer = Buffer.concat([buffer, chunk]);
     }
     const filePath = path.join(__dirname, '../temp/', `${Date.now()}.${mediaType}`);
+    if (!fs.existsSync(path.join(__dirname, '../temp/'))) {
+        fs.mkdirSync(path.join(__dirname, '../temp/'));
+    }
     fs.writeFileSync(filePath, buffer);
     return filePath;
 }
@@ -18,42 +21,43 @@ async function hideTagCommand(sock, chatId, senderId, messageText, replyMessage,
     const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
 
     if (!isBotAdmin) {
-        await sock.sendMessage(chatId, { text: 'Please make the bot an admin first.' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '❌ Errore: Il bot deve essere admin.' }, { quoted: message });
         return;
     }
 
     if (!isSenderAdmin) {
-        await sock.sendMessage(chatId, { text: 'Only admins can use the .hidetag command.' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '❌ Solo gli admin possono usare questo comando.' }, { quoted: message });
         return;
     }
 
     const groupMetadata = await sock.groupMetadata(chatId);
     const participants = groupMetadata.participants || [];
-    const nonAdmins = participants.filter(p => !p.admin).map(p => p.id);
+    // Ora tagga TUTTI i membri (non solo i non-admin)
+    const allMembers = participants.map(p => p.id);
 
     if (replyMessage) {
         let content = {};
         if (replyMessage.imageMessage) {
             const filePath = await downloadMediaMessage(replyMessage.imageMessage, 'image');
-            content = { image: { url: filePath }, caption: messageText || replyMessage.imageMessage.caption || '', mentions: nonAdmins };
+            content = { image: { url: filePath }, caption: messageText || replyMessage.imageMessage.caption || '', mentions: allMembers };
         } else if (replyMessage.videoMessage) {
             const filePath = await downloadMediaMessage(replyMessage.videoMessage, 'video');
-            content = { video: { url: filePath }, caption: messageText || replyMessage.videoMessage.caption || '', mentions: nonAdmins };
+            content = { video: { url: filePath }, caption: messageText || replyMessage.videoMessage.caption || '', mentions: allMembers };
         } else if (replyMessage.conversation || replyMessage.extendedTextMessage) {
-            content = { text: replyMessage.conversation || replyMessage.extendedTextMessage.text, mentions: nonAdmins };
+            const text = replyMessage.conversation || replyMessage.extendedTextMessage.text;
+            content = { text: text, mentions: allMembers };
         } else if (replyMessage.documentMessage) {
             const filePath = await downloadMediaMessage(replyMessage.documentMessage, 'document');
-            content = { document: { url: filePath }, fileName: replyMessage.documentMessage.fileName, caption: messageText || '', mentions: nonAdmins };
+            content = { document: { url: filePath }, fileName: replyMessage.documentMessage.fileName, caption: messageText || '', mentions: allMembers };
         }
 
         if (Object.keys(content).length > 0) {
             await sock.sendMessage(chatId, content);
         }
     } else {
-        await sock.sendMessage(chatId, { text: messageText || 'Tagged members (excluding admins).', mentions: nonAdmins });
+        // Messaggio di testo semplice se non stai rispondendo a nulla
+        await sock.sendMessage(chatId, { text: messageText || '📢 Annuncio a tutti i membri!', mentions: allMembers });
     }
 }
 
 module.exports = hideTagCommand;
-
-
